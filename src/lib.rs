@@ -6,7 +6,7 @@ use std::fmt::Debug;
 mod formattables;
 
 pub trait Formattable {
-    fn format_with(&self, format: SiFormat) -> impl Display + Debug;
+    fn format_with(self, format: SiFormat) -> impl Display + Debug;
 }
 
 pub const SI_FORMAT: SiFormat = SiFormat {
@@ -35,7 +35,7 @@ impl SiFormat {
         }
     }
 
-    pub fn f(self, x: &impl Formattable) -> impl Display + Debug {
+    pub fn f(self, x: impl Formattable) -> impl Display + Debug {
         x.format_with(self)
     }
 }
@@ -65,6 +65,12 @@ struct FormatOutput;
 impl<T: PrimInt> Display for SiFormatted<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.output(&mut FormatOutput, f)
+    }
+}
+
+impl<T: PrimInt> Debug for SiFormatted<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <Self as Display>::fmt(self, f)
     }
 }
 
@@ -109,7 +115,7 @@ impl<'a> Output<Formatter<'a>> for FormatOutput {
 impl<T: PrimInt> SiFormatted<T> {
     #[inline]
     fn output<I, O: Output<I>>(&self, out: &mut O, out_i: &mut I) -> Result<(), O::Error> {
-        assert!(self.sig_digits <= 32);
+        assert!(self.format.significant_digits <= 32);
         const DECIMAL_SEPARATOR: u8 = b'.';
         const GROUP_SEPARATOR: u8 = b'_';
 
@@ -120,14 +126,14 @@ impl<T: PrimInt> SiFormatted<T> {
         while !n.is_zero() {
             digits_written += 1;
             buffer_i = if buffer_i == 0 {
-                self.sig_digits
+                self.format.significant_digits
             } else {
                 buffer_i
             } - 1;
             buffer[buffer_i] = (n % T::from(10).unwrap()).to_u8().unwrap();
             n = n / T::from(10).unwrap();
         }
-        let msd = self.shift + digits_written as isize - 1;
+        let msd = self.format.shift + digits_written as isize - 1;
         let msd3 = div_floor_3(msd);
 
         if out.check_exponent(out_i, msd)?.is_break() {
@@ -135,10 +141,10 @@ impl<T: PrimInt> SiFormatted<T> {
         }
         let mut pm3 = msd - msd3 * 3;
         let mut separator = DECIMAL_SEPARATOR;
-        for i in (0..self.sig_digits).rev() {
+        for i in (0..self.format.significant_digits).rev() {
             out.write_byte(out_i, buffer[buffer_i] + b'0')?;
             buffer_i += 1;
-            if buffer_i == self.sig_digits {
+            if buffer_i == self.format.significant_digits {
                 buffer_i = 0
             };
             if pm3 == 0 && i != 0 {
@@ -155,16 +161,18 @@ impl<T: PrimInt> SiFormatted<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::SiFormatted;
+    use crate::{SiFormat, SiFormatted};
 
     #[test]
     fn test() {
-        fn t(num: usize, shift: isize, sig_digits: usize, expected: &str) {
+        fn t(num: usize, shift: isize, significant_digits: usize, expected: &str) {
             assert_eq!(
                 SiFormatted {
                     num,
-                    shift,
-                    sig_digits
+                    format: SiFormat {
+                        shift,
+                        significant_digits
+                    },
                 }
                 .to_string(),
                 expected
