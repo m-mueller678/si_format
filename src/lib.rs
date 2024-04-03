@@ -1,11 +1,48 @@
 use core::fmt::{self, Display, Formatter};
 use core::ops::ControlFlow;
 use num_traits::PrimInt;
+use std::fmt::Debug;
 
-struct SiFormat<T: PrimInt> {
-    num: T,
+mod formattables;
+
+pub trait Formattable {
+    fn format_with(&self, format: SiFormat) -> impl Display + Debug;
+}
+
+pub const SI_FORMAT: SiFormat = SiFormat {
+    shift: 0,
+    significant_digits: 3,
+};
+
+#[derive(Clone, Copy)]
+pub struct SiFormat {
     shift: isize,
-    sig_digits: usize,
+    significant_digits: usize,
+}
+
+impl SiFormat {
+    pub fn with_precision(self, significant_digits: usize) -> Self {
+        SiFormat {
+            significant_digits,
+            ..self
+        }
+    }
+
+    pub fn with_shit(self, significant_digits: usize) -> Self {
+        SiFormat {
+            significant_digits,
+            ..self
+        }
+    }
+
+    pub fn f(self, x: &impl Formattable) -> impl Display + Debug {
+        x.format_with(self)
+    }
+}
+
+struct SiFormatted<T: PrimInt> {
+    num: T,
+    format: SiFormat,
 }
 
 fn div_floor_3(x: isize) -> isize {
@@ -25,7 +62,7 @@ trait Output<Inner> {
 
 struct FormatOutput;
 
-impl<T: PrimInt> Display for SiFormat<T> {
+impl<T: PrimInt> Display for SiFormatted<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.output(&mut FormatOutput, f)
     }
@@ -69,7 +106,7 @@ impl<'a> Output<Formatter<'a>> for FormatOutput {
     }
 }
 
-impl<T: PrimInt> SiFormat<T> {
+impl<T: PrimInt> SiFormatted<T> {
     #[inline]
     fn output<I, O: Output<I>>(&self, out: &mut O, out_i: &mut I) -> Result<(), O::Error> {
         assert!(self.sig_digits <= 32);
@@ -118,13 +155,13 @@ impl<T: PrimInt> SiFormat<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::SiFormat;
+    use crate::SiFormatted;
 
     #[test]
     fn test() {
         fn t(num: usize, shift: isize, sig_digits: usize, expected: &str) {
             assert_eq!(
-                SiFormat {
+                SiFormatted {
                     num,
                     shift,
                     sig_digits
