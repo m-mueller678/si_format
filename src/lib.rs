@@ -6,7 +6,7 @@
 //! assert_eq!(123456u32.si_format().to_string(),"123k")
 //! ```
 //! You may specify a shift by a certain number of decimal places.
-//! This allows printing of values less than one without floating point numbers:
+//! This allows printing fractional quantities without floating point numbers:
 //! ```
 //! # use std::time::Duration;
 //! # use si_format::Formattable;
@@ -25,16 +25,19 @@ mod formattables;
 pub trait Formattable {
     /// To reduce compiled binary size, formatting implementations are reused.
     /// For instance, a `u16` is formatted by converting it to a `u32` and invoking the `u32` code.
-    /// This associated type the backing implementation used for this type.
+    /// This associated type is the backing implementation used for this type.
     type BackingImpl: PrimInt;
     /// formats the value using the default [Config].
     /// The returned object can be further configured before display.
     fn si_format(self) -> SiFormatted<Self::BackingImpl>;
 }
 
+/// Formatting Settings.
+///
 /// This contains all the settings available for formatting a [SiFormatted].
 /// For documentation on the individual fields, see the respective methods on [SiFormatted].
 #[non_exhaustive]
+#[allow(missing_docs)]
 #[derive(Clone, Copy)]
 pub struct Config {
     pub shift: isize,
@@ -42,7 +45,7 @@ pub struct Config {
 }
 
 impl Config {
-    /// Returns a configuration with sensible defaults.
+    /// A default configuration, the exact values are subject to change.
     pub const fn new() -> Self {
         Config {
             shift: 0,
@@ -57,7 +60,7 @@ impl Default for Config {
     }
 }
 
-/// This bundles some number with a [Config], which contains instructions on how to format it.
+/// This bundles a number to be displayed with a [Config], which contains instructions on how to format it.
 /// Formatting can be configured by replacing the [Config] object, or by setting individual parameters.
 pub struct SiFormatted<T: PrimInt> {
     config: Config,
@@ -65,16 +68,16 @@ pub struct SiFormatted<T: PrimInt> {
 }
 
 impl<T: PrimInt> SiFormatted<T> {
-    /// Set the format config to use
+    /// Replace the entire [Config].
     pub fn with(mut self, config: Config) -> Self {
         self.config = config;
         self
     }
 
-    /// Set the number of significant digits to display.
+    /// The number of significant digits to display.
     /// ```
     /// use si_format::Formattable;
-    /// assert_eq!(format!("{}s",(1234).si_format().with_precision(2),"1.2k");
+    /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
     /// ```
     pub fn with_precision(mut self, significant_digits: usize) -> Self {
         self.config.significant_digits = significant_digits;
@@ -83,13 +86,13 @@ impl<T: PrimInt> SiFormatted<T> {
 
     /// Multiply formatted value by a power of ten.
     ///
-    /// The input number`x` is formatted as if it were `x*10^shift`.
-    /// No actual multiplication is performed, the multiplied value need not be representable as `T`.
+    /// The input number `x` is formatted as if it were `x*10^shift`.
     /// This allows formatting of fractional quantities using integers:
     /// ```
     /// use si_format::Formattable;
     /// assert_eq!(format!("{}s",(22).si_format().with_shift(-3)),"22.0ms");
     /// ```
+    /// No actual multiplication is performed, the multiplied value need not be representable as `T`.
     pub fn with_shift(mut self, shift: isize) -> Self {
         self.config.shift = shift;
         self
@@ -163,7 +166,7 @@ impl<'a> Output<Formatter<'a>> for FormatOutput {
     }
 }
 
-// TODO fix rounding
+// TODO fix rounding and sign
 
 impl<T: PrimInt> SiFormatted<T> {
     #[inline]
