@@ -20,16 +20,14 @@ use num_traits::PrimInt;
 use std::fmt::Debug;
 
 mod formattables;
+mod format_impl;
 
 /// A Type that can be formatted with a `SiFormat`.
 pub trait Formattable {
-    /// To reduce compiled binary size, formatting implementations are reused.
-    /// For instance, a `u16` is formatted by converting it to a `u32` and invoking the `u32` code.
-    /// This associated type is the backing implementation used for this type.
-    type BackingImpl: PrimInt;
+    type Formatted: Display+Debug;
     /// Wraps self for formatting.
     /// The returned object can be further configured before display.
-    fn si_format(self) -> SiFormatted<Self::BackingImpl>;
+    fn si_format(self) -> Self::Formatted;
 }
 
 struct Config {
@@ -53,6 +51,10 @@ impl Config {
 pub struct SiFormatted<T: PrimInt> {
     config: Config,
     num: T,
+}
+
+fn aaa(){
+    0f64.fmt().unwrap()
 }
 
 impl<T: PrimInt> SiFormatted<T> {

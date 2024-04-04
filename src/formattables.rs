@@ -14,8 +14,8 @@ macro_rules! formattable {
     };
     ($t:ty,$via:ty) => {
         impl Formattable for $t {
-            type BackingImpl = $via;
-            fn si_format(self) -> SiFormatted<Self::BackingImpl> {
+            type Formatted = SiFormatted<$via>;
+            fn si_format(self) -> Self:: {
                 if let Ok(x) = <$via as TryFrom<$t>>::try_from(self){
                     Formattable::si_format(x)
                 }else{
