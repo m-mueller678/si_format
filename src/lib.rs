@@ -1,3 +1,19 @@
+#![warn(missing_docs)]
+
+//! This crate formats numbers using metric prefixes:
+//! ```
+//! # use si_format::Formattable;
+//! assert_eq!(123456u32.si_format().to_string(),"123k")
+//! ```
+//! You may specify a shift by a certain number of decimal places.
+//! This allows printing of values less than one without floating point numbers:
+//! ```
+//! # use std::time::Duration;
+//! # use si_format::Formattable;
+//! let d = Duration::from_micros(20);
+//! assert_eq!(format!("{}s",d.as_nanos().si_format().with_shift(-9)),"20.0µs");
+//! ```
+
 use core::fmt::{self, Display, Formatter};
 use core::ops::ControlFlow;
 use num_traits::PrimInt;
@@ -5,44 +21,79 @@ use std::fmt::Debug;
 
 mod formattables;
 
+/// A Type that can be formatted with a `SiFormat`.
 pub trait Formattable {
-    fn format_with(self, format: SiFormat) -> impl Display + Debug;
+    /// To reduce compiled binary size, formatting implementations are reused.
+    /// For instance, a `u16` is formatted by converting it to a `u32` and invoking the `u32` code.
+    /// This associated type the backing implementation used for this type.
+    type BackingImpl: PrimInt;
+    /// formats the value using the default [Config].
+    /// The returned object can be further configured before display.
+    fn si_format(self) -> SiFormatted<Self::BackingImpl>;
 }
 
-pub const SI_FORMAT: SiFormat = SiFormat {
-    shift: 0,
-    significant_digits: 3,
-};
-
+/// This contains all the settings available for formatting a [SiFormatted].
+/// For documentation on the individual fields, see the respective methods on [SiFormatted].
+#[non_exhaustive]
 #[derive(Clone, Copy)]
-pub struct SiFormat {
-    shift: isize,
-    significant_digits: usize,
+pub struct Config {
+    pub shift: isize,
+    pub significant_digits: usize,
 }
 
-impl SiFormat {
-    pub fn with_precision(self, significant_digits: usize) -> Self {
-        SiFormat {
-            significant_digits,
-            ..self
+impl Config {
+    /// Returns a configuration with sensible defaults.
+    pub const fn new() -> Self {
+        Config {
+            shift: 0,
+            significant_digits: 3,
         }
-    }
-
-    pub fn with_shit(self, significant_digits: usize) -> Self {
-        SiFormat {
-            significant_digits,
-            ..self
-        }
-    }
-
-    pub fn f(self, x: impl Formattable) -> impl Display + Debug {
-        x.format_with(self)
     }
 }
 
-struct SiFormatted<T: PrimInt> {
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// This bundles some number with a [Config], which contains instructions on how to format it.
+/// Formatting can be configured by replacing the [Config] object, or by setting individual parameters.
+pub struct SiFormatted<T: PrimInt> {
+    config: Config,
     num: T,
-    format: SiFormat,
+}
+
+impl<T: PrimInt> SiFormatted<T> {
+    /// Set the format config to use
+    pub fn with(mut self, config: Config) -> Self {
+        self.config = config;
+        self
+    }
+
+    /// Set the number of significant digits to display.
+    /// ```
+    /// use si_format::Formattable;
+    /// assert_eq!(format!("{}s",(1234).si_format().with_precision(2),"1.2k");
+    /// ```
+    pub fn with_precision(mut self, significant_digits: usize) -> Self {
+        self.config.significant_digits = significant_digits;
+        self
+    }
+
+    /// Multiply formatted value by a power of ten.
+    ///
+    /// The input number`x` is formatted as if it were `x*10^shift`.
+    /// No actual multiplication is performed, the multiplied value need not be representable as `T`.
+    /// This allows formatting of fractional quantities using integers:
+    /// ```
+    /// use si_format::Formattable;
+    /// assert_eq!(format!("{}s",(22).si_format().with_shift(-3)),"22.0ms");
+    /// ```
+    pub fn with_shift(mut self, shift: isize) -> Self {
+        self.config.shift = shift;
+        self
+    }
 }
 
 fn div_floor_3(x: isize) -> isize {
@@ -112,10 +163,12 @@ impl<'a> Output<Formatter<'a>> for FormatOutput {
     }
 }
 
+// TODO fix rounding
+
 impl<T: PrimInt> SiFormatted<T> {
     #[inline]
     fn output<I, O: Output<I>>(&self, out: &mut O, out_i: &mut I) -> Result<(), O::Error> {
-        assert!(self.format.significant_digits <= 32);
+        assert!(self.config.significant_digits <= 32);
         const DECIMAL_SEPARATOR: u8 = b'.';
         const GROUP_SEPARATOR: u8 = b'_';
 
@@ -126,14 +179,14 @@ impl<T: PrimInt> SiFormatted<T> {
         while !n.is_zero() {
             digits_written += 1;
             buffer_i = if buffer_i == 0 {
-                self.format.significant_digits
+                self.config.significant_digits
             } else {
                 buffer_i
             } - 1;
             buffer[buffer_i] = (n % T::from(10).unwrap()).to_u8().unwrap();
             n = n / T::from(10).unwrap();
         }
-        let msd = self.format.shift + digits_written as isize - 1;
+        let msd = self.config.shift + digits_written as isize - 1;
         let msd3 = div_floor_3(msd);
 
         if out.check_exponent(out_i, msd)?.is_break() {
@@ -141,10 +194,10 @@ impl<T: PrimInt> SiFormatted<T> {
         }
         let mut pm3 = msd - msd3 * 3;
         let mut separator = DECIMAL_SEPARATOR;
-        for i in (0..self.format.significant_digits).rev() {
+        for i in (0..self.config.significant_digits).rev() {
             out.write_byte(out_i, buffer[buffer_i] + b'0')?;
             buffer_i += 1;
-            if buffer_i == self.format.significant_digits {
+            if buffer_i == self.config.significant_digits {
                 buffer_i = 0
             };
             if pm3 == 0 && i != 0 {
@@ -161,7 +214,7 @@ impl<T: PrimInt> SiFormatted<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{SiFormat, SiFormatted};
+    use crate::{Config, SiFormatted};
 
     #[test]
     fn test() {
@@ -169,7 +222,7 @@ mod tests {
             assert_eq!(
                 SiFormatted {
                     num,
-                    format: SiFormat {
+                    config: Config {
                         shift,
                         significant_digits
                     },
