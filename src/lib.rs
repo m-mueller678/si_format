@@ -3,7 +3,7 @@
 //! This crate formats numbers using metric prefixes:
 //! ```
 //! # use si_format::Formattable;
-//! assert_eq!(123456u32.si_format().to_string(),"123k")
+//! assert_eq!(123456u32.si_format().with_precision(3).to_string(),"123k")
 //! ```
 //! You may specify a shift by a certain number of decimal places.
 //! This allows printing fractional quantities without floating point numbers:
@@ -27,21 +27,14 @@ pub trait Formattable {
     /// For instance, a `u16` is formatted by converting it to a `u32` and invoking the `u32` code.
     /// This associated type is the backing implementation used for this type.
     type BackingImpl: PrimInt;
-    /// formats the value using the default [Config].
+    /// Wraps self for formatting.
     /// The returned object can be further configured before display.
     fn si_format(self) -> SiFormatted<Self::BackingImpl>;
 }
 
-/// Formatting Settings.
-///
-/// This contains all the settings available for formatting a [SiFormatted].
-/// For documentation on the individual fields, see the respective methods on [SiFormatted].
-#[non_exhaustive]
-#[allow(missing_docs)]
-#[derive(Clone, Copy)]
-pub struct Config {
-    pub shift: isize,
-    pub significant_digits: usize,
+struct Config {
+    shift: isize,
+    significant_digits: usize,
 }
 
 impl Config {
@@ -52,34 +45,24 @@ impl Config {
             significant_digits: 3,
         }
     }
+
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// This bundles a number to be displayed with a [Config], which contains instructions on how to format it.
-/// Formatting can be configured by replacing the [Config] object, or by setting individual parameters.
+/// This is a number wrapped for formatting.
+/// The `with_*` methods can be used to customize display.
 pub struct SiFormatted<T: PrimInt> {
     config: Config,
     num: T,
 }
 
 impl<T: PrimInt> SiFormatted<T> {
-    /// Replace the entire [Config].
-    pub fn with(mut self, config: Config) -> Self {
-        self.config = config;
-        self
-    }
-
-    /// The number of significant digits to display.
+    /// The number of significant digits to display, must be at least 3.
     /// ```
     /// use si_format::Formattable;
     /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
     /// ```
-    pub fn with_precision(mut self, significant_digits: usize) -> Self {
+    pub const fn with_precision(mut self, significant_digits: usize) -> Self {
+        assert!(significant_digits>=3);
         self.config.significant_digits = significant_digits;
         self
     }
@@ -93,8 +76,10 @@ impl<T: PrimInt> SiFormatted<T> {
     /// assert_eq!(format!("{}s",(22).si_format().with_shift(-3)),"22.0ms");
     /// ```
     /// No actual multiplication is performed, the multiplied value need not be representable as `T`.
-    pub fn with_shift(mut self, shift: isize) -> Self {
-        self.config.shift = shift;
+    pub const fn with_shift(mut self, shift: i8) -> Self {
+        if self.config.shift!=isize::MAX{
+            self.config.shift = shift as isize;
+        }
         self
     }
 }
@@ -106,6 +91,7 @@ fn div_floor_3(x: isize) -> isize {
 trait Output<Inner> {
     type Error;
     fn write_byte(&mut self, i: &mut Inner, b: u8) -> Result<(), Self::Error>;
+    fn write_err(&mut self, i: &mut Inner) -> Result<(), Self::Error>;
     fn check_exponent(
         &mut self,
         i: &mut Inner,
@@ -136,17 +122,18 @@ impl<'a> Output<Formatter<'a>> for FormatOutput {
         i.write_str(core::str::from_utf8(&[b]).map_err(|_| ()).unwrap())
     }
 
+    fn write_err(&mut self, i: &mut Formatter<'a>) -> Result<(), Self::Error> {
+        i.write_str("ERR")
+    }
+
     #[inline]
     fn check_exponent(
         &mut self,
         i: &mut Formatter,
         e: isize,
     ) -> Result<ControlFlow<(), ()>, Self::Error> {
-        if e < -30 {
-            i.write_str("0")?;
-            Ok(ControlFlow::Break(()))
-        } else if e > 32 {
-            i.write_str("∞")?;
+        if e < -30 || e > 32 {
+            self.write_err(i)?;
             Ok(ControlFlow::Break(()))
         } else {
             Ok(ControlFlow::Continue(()))
@@ -166,7 +153,7 @@ impl<'a> Output<Formatter<'a>> for FormatOutput {
     }
 }
 
-// TODO fix rounding and sign
+// TODO fix rounding
 
 impl<T: PrimInt> SiFormatted<T> {
     #[inline]
@@ -229,7 +216,7 @@ mod tests {
                     num,
                     config: Config {
                         shift,
-                        significant_digits
+                        significant_digits,
                     },
                 }
                 .to_string(),

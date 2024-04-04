@@ -16,7 +16,13 @@ macro_rules! formattable {
         impl Formattable for $t {
             type BackingImpl = $via;
             fn si_format(self) -> SiFormatted<Self::BackingImpl> {
-                Formattable::si_format(self as $via)
+                if let Ok(x) = <$via as TryFrom<$t>>::try_from(self){
+                    Formattable::si_format(x)
+                }else{
+                    let mut ret = Formattable::si_format(self as $via);
+                    ret.config.shift = isize::MAX;
+                    ret
+                }
             }
         }
     };
