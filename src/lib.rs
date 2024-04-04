@@ -174,7 +174,6 @@ impl<T: PrimInt> SiFormatted<T> {
         assert!(self.config.significant_digits <= 32);
         const DECIMAL_SEPARATOR: u8 = b'.';
         const GROUP_SEPARATOR: u8 = b'_';
-
         let mut buffer = [0u8; 32];
         let mut n = self.num;
         let mut buffer_i = 0usize;
@@ -194,6 +193,9 @@ impl<T: PrimInt> SiFormatted<T> {
 
         if out.check_exponent(out_i, msd)?.is_break() {
             return Ok(());
+        }
+        if self.num < T::from(0).unwrap() {
+            out.write_byte(out_i, b'-')?;
         }
         let mut pm3 = msd - msd3 * 3;
         let mut separator = DECIMAL_SEPARATOR;
