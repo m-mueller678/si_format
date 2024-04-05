@@ -17,8 +17,8 @@
 
 use crate::format_impl::BUFFER_SIZE;
 use core::fmt::{self, Display, Formatter};
-use std::fmt::Debug;
 use format_impl::FormatImpl;
+use std::fmt::Debug;
 
 mod format_impl;
 mod formattable;
@@ -94,10 +94,24 @@ impl<T: FormatImpl> Debug for SiFormatted<T> {
 #[cfg(test)]
 mod tests {
     use crate::formattable::Formattable;
+    use std::ops::Neg;
 
     #[test]
     fn test() {
-        fn t<T: Formattable>(num: T, shift: i8, significant_digits: usize, expected: &str) {
+        fn t<T: Formattable + Neg<Output = T> + Copy>(
+            num: T,
+            shift: i8,
+            significant_digits: usize,
+            expected: &str,
+        ) {
+            assert_eq!(
+                (-num)
+                    .si_format()
+                    .with_shift(shift)
+                    .with_precision(significant_digits)
+                    .to_string(),
+                format!("-{}", expected)
+            );
             assert_eq!(
                 num.si_format()
                     .with_shift(shift)
@@ -116,11 +130,15 @@ mod tests {
         t(12345678, -5, 8, "123.456_78");
         t(12345678, -5, 9, "123.456_780");
         t(123456789, -6, 9, "123.456_789");
-        t(121212121212121212121212121f64,0,15,"121.212_121_212_121Y");
-        t(1.3e-4,0,1,"130µ");
-        t(1.3e-4,0,2,"130µ");
-        t(1.3e-4,0,3,"130µ");
-        t(1.3e-4,0,4,"130.0µ");
+        t(
+            121212121212121212121212121f64,
+            0,
+            15,
+            "121.212_121_212_121Y",
+        );
+        t(1.3e-4, 0, 1, "130µ");
+        t(1.3e-4, 0, 2, "130µ");
+        t(1.3e-4, 0, 3, "130µ");
+        t(1.3e-4, 0, 4, "130.0µ");
     }
 }
-

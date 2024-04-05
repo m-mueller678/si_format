@@ -10,7 +10,10 @@ pub(crate) trait FormatImpl: Copy {
 impl FormatImpl for f64 {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
         assert!(self.is_finite() && self > 0.0);
-        assert!(BUFFER_SIZE >= 30);
+        #[allow(clippy::assertions_on_constants)]
+        const _: () = {
+            assert!(BUFFER_SIZE >= 30);
+        };
         assert!(config.significant_digits <= 15);
         self *= 10f64.powi(config.shift as i32);
         let log1000 = (self.log10() / 3.0 - 1e-4).floor() as i32;
@@ -22,11 +25,12 @@ impl FormatImpl for f64 {
         let std_precision = config.significant_digits - 1;
         core::fmt::write(
             &mut writer,
-            format_args!("{:.*}",std_precision , normalized),
-        ).unwrap();
+            format_args!("{:.*}", std_precision, normalized),
+        )
+        .unwrap();
         let decimal_pos = writer.written - std_precision - 1;
         //dbg!(String::from_utf8_lossy(&writer.buffer));
-        if writer.buffer[decimal_pos] == b'.'{
+        if writer.buffer[decimal_pos] == b'.' {
             if decimal_pos > 3 {
                 debug_assert!(decimal_pos == 4);
                 writer.buffer[1..][..4].rotate_right(1);
@@ -47,10 +51,10 @@ impl FormatImpl for f64 {
                 writer.written = decimal_pos + 1 + last_decimal + last_decimal / 3 + 1;
                 // at most 25
             };
-        }else{
-            debug_assert!(!writer.buffer[..writer.written].iter().any(|x|*x==b'.'));
+        } else {
+            debug_assert!(!writer.buffer[..writer.written].iter().any(|x| *x == b'.'));
         }
-        if log1000 < -10 || log1000 > 10 {
+        if !(-10..=10).contains(&log1000) {
             writer.push_byte(b'e');
             write!(&mut writer, "{log1000}").unwrap();
         } else if log1000 == -2 {
