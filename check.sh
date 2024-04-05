@@ -1,14 +1,19 @@
-set -ex
+set -e
 
-cargo clippy -- -D warnings
-cargo clippy --no-default-features --features libm --features float32 -- -D warnings
-cargo clippy --no-default-features --features std --features float32 -- -D warnings
-cargo clippy --no-default-features --features libm --features float64 -- -D warnings
-cargo clippy --no-default-features --features std --features float64 -- -D warnings
+FEATURES=(
+    ""
+    "--no-default-features --features libm --features float32"
+    "--no-default-features --features std --features float32"
+    "--no-default-features --features libm --features float64"
+    "--no-default-features --features std --features float64"
+)
 
+for feature in "${FEATURES[@]}"; do
+    echo $feature
+    cargo clippy $feature -- -D warnings
+done
 
-cargo test
-cargo test --no-default-features --features libm --features float32
-cargo test --no-default-features --features std --features float32
-cargo test --no-default-features --features libm --features float64
-cargo test --no-default-features --features std --features float64
+for feature in "${FEATURES[@]}"; do
+    echo $feature
+    cargo test $feature
+done
