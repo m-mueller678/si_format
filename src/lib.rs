@@ -101,12 +101,12 @@ impl<T: FormatImpl> Debug for SiFormatted<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::float_impl::FormatFloat;
     use crate::formattable::Formattable;
     use crate::write_buffer::WriteBuffer;
     use core::fmt::Display;
     use core::fmt::Write;
     use core::ops::Neg;
-    use crate::float_impl::FormatFloat;
 
     #[test]
     fn test() {
@@ -149,7 +149,8 @@ mod tests {
         t(12345678, -3, 3, "12.3k");
         t(12345678, -4, 3, "1.23k");
         t(12345678, -5, 3, "123");
-        #[cfg(feature = "float64")]{
+        #[cfg(feature = "float64")]
+        {
             t(12345678, -5, 12, "123.456_780_000");
             t(12345678, -5, 8, "123.456_78");
             t(12345678, -5, 9, "123.456_780");

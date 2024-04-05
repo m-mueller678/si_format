@@ -1,5 +1,5 @@
-use crate::*;
 use crate::float_impl::FormatFloat;
+use crate::*;
 
 /// A Type that can be formatted with a `SiFormat`.
 pub trait Formattable {

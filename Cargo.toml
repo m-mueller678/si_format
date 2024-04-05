@@ -14,5 +14,4 @@ float64=["float32"]
 
 [dependencies]
 num-traits = "0.2.18"
-derive_builder = "0.20.0"
 libm = { version = "0.2.8",optional = true }

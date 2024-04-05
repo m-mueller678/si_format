@@ -5,9 +5,9 @@ compile_error!("feature \"std\" and feature \"libm\" cannot be enabled at the sa
 pub type MathImpl = FormatFloat;
 
 #[cfg(feature = "float64")]
-pub type FormatFloat=f64;
+pub type FormatFloat = f64;
 #[cfg(not(feature = "float64"))]
-pub type FormatFloat=f32;
+pub type FormatFloat = f32;
 
 #[cfg(feature = "libm")]
 pub type MathImpl = libm::Libm<FormatFloat>;

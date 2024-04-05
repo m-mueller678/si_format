@@ -1,8 +1,9 @@
-use crate::Config;
-use core::fmt::Write;
 use crate::float_impl::FormatFloat;
+use crate::write_buffer::WriteBuffer;
+use crate::Config;
+use core::fmt::{Display, Write};
 
-pub const BUFFER_SIZE: usize = 32;
+pub const BUFFER_SIZE: usize = 40;
 
 pub(crate) trait FormatImpl: Copy {
     fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize;
@@ -12,7 +13,6 @@ pub(crate) trait FormatImpl: Copy {
 impl FormatImpl for FormatFloat {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
         use crate::float_impl::*;
-        use crate::write_buffer::WriteBuffer;
         #[allow(clippy::assertions_on_constants)]
         const _: () = {
             assert!(BUFFER_SIZE >= 30);
@@ -67,18 +67,79 @@ impl FormatImpl for FormatFloat {
             } else {
                 debug_assert!(!writer.buffer[..writer.written].iter().any(|x| *x == b'.'));
             }
-            if !(-10..=10).contains(&log1000) {
-                writer.push_byte(b'e');
-                write!(&mut writer, "{log1000}").unwrap();
-            } else if log1000 == -2 {
-                writer.write_str("µ").unwrap();
-            } else if log1000 != 0 {
-                writer.push_byte(b"qryzafpnum kMGTPEZYRQ"[(log1000 + 10) as usize]);
-            }
+            write_prefix(&mut writer, log1000);
             debug_assert!(writer.written <= 29);
         } else {
             core::fmt::write(&mut writer, format_args!("{:.*}", std_precision, self)).unwrap();
         }
         writer.written + is_negative as usize
     }
+}
+
+fn write_prefix(writer: &mut WriteBuffer, log1000: i32) {
+    if !(-10..=10).contains(&log1000) {
+        write!(writer, "e{log1000}").unwrap();
+    } else if log1000 == -2 {
+        writer.write_str("µ").unwrap();
+    } else if log1000 != 0 {
+        writer.push_byte(b"qryzafpnum kMGTPEZYRQ"[(log1000 + 10) as usize]);
+    }
+}
+
+fn div_floor3(x: isize) -> isize {
+    ((x.wrapping_sub(isize::MIN / 3 * 3) as usize) / 3) as isize + isize::MIN / 3
+}
+
+fn mod_floor3(x: isize) -> isize {
+    x - div_floor3(x) * 3
+}
+
+impl FormatImpl for u64 {
+    fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
+        format_unsigned(self, config, out)
+    }
+}
+
+fn format_unsigned<T: Display>(x: T, config: &Config, buffer: &mut [u8]) -> usize {
+    let writer = &mut WriteBuffer { buffer, written: 0 };
+    write!(writer, "{}", x).unwrap();
+    let mut digits = writer.written;
+    while writer.written < config.significant_digits {
+        writer.push_byte(b'0');
+    }
+    let round_up = writer.buffer[config.significant_digits] >= b'5';
+    if round_up {
+        let mut increment = config.significant_digits;
+        loop {
+            if increment == 0 {
+                debug_assert!(writer.buffer[0..config.significant_digits]
+                    .iter()
+                    .all(|x| *x == b'0'));
+                writer.buffer[0] = b'1';
+                digits += 1;
+                break;
+            } else {
+                increment -= 1;
+                if writer.buffer[increment] == b'9' {
+                    writer.buffer[increment] = b'0';
+                } else {
+                    writer.buffer[increment] += 1;
+                    break;
+                }
+            }
+        }
+    }
+    let log10 = digits as isize - 1 + config.shift;
+    let before_decimal = mod_floor3(log10) as usize + 1;
+    for digit in (before_decimal as usize..config.significant_digits).rev() {
+        let new_pos = digit + (digit - before_decimal) / 3 + 1;
+        if digit > before_decimal && digit + (digit - before_decimal) % 3 == 0 {
+            writer.buffer[new_pos - 1] = b'_'
+        }
+        writer.buffer[new_pos] = writer.buffer[digit];
+    }
+    let last_digit = config.significant_digits - 1;
+    writer.written = last_digit + (last_digit - before_decimal) / 3 + 1;
+    write_prefix(writer, div_floor3(log10) as i32);
+    writer.written
 }
