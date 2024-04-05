@@ -1,5 +1,6 @@
 use crate::Config;
 use core::fmt::Write;
+use crate::float_impl::FormatFloat;
 
 pub const BUFFER_SIZE: usize = 32;
 
@@ -7,8 +8,8 @@ pub(crate) trait FormatImpl: Copy {
     fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize;
 }
 
-#[cfg(any(feature = "libm", feature = "std"))]
-impl FormatImpl for f64 {
+#[cfg(feature = "float32")]
+impl FormatImpl for FormatFloat {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
         use crate::float_impl::*;
         use crate::write_buffer::WriteBuffer;
@@ -31,13 +32,13 @@ impl FormatImpl for f64 {
         };
         let std_precision = config.significant_digits - 1;
         if self.is_finite() {
-            self *= powi(10f64, config.shift as i32);
+            self *= powi(10 as FormatFloat, config.shift as i32);
             let log1000 = if self == 0.0 {
                 0
             } else {
                 MathImpl::floor(MathImpl::log10(self) / 3.0 - 1e-4) as i32
             };
-            self *= powi(1000f64, -log1000);
+            self *= powi(1000 as FormatFloat, -log1000);
             core::fmt::write(&mut writer, format_args!("{:.*}", std_precision, self)).unwrap();
             //dbg!(String::from_utf8_lossy(writer.buffer));
             let decimal_pos = writer.written - std_precision - 1;

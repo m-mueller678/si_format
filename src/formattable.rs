@@ -1,10 +1,11 @@
 use crate::*;
+use crate::float_impl::FormatFloat;
 
 /// A Type that can be formatted with a `SiFormat`.
 pub trait Formattable {
     /// To reduce binary size, most types are formatted by casting them to another type and formatting that.
     /// This is that type.
-    /// Currently, all values are formatted as `f64`, though this may change in the future.
+    /// Currently, all values are formatted as floats, though this may change in the future.
     /// The concrete backing type used for any type is an implementation detail and you should not rely on it.
     #[allow(missing_docs)]
     #[allow(private_bounds)]
@@ -42,19 +43,21 @@ macro_rules! formattable {
 }
 
 formattable!(
-    usize as f64,
-    u128 as f64,
-    u64 as f64,
-    u32 as f64,
-    u16 as f64,
-    u8 as f64,
-    isize as f64,
-    i128 as f64,
-    i64 as f64,
-    i32 as f64,
-    i16 as f64,
-    i8 as f64,
-    f32 as f64,
+    usize as FormatFloat,
+    u128 as FormatFloat,
+    u64 as FormatFloat,
+    u32 as FormatFloat,
+    u16 as FormatFloat,
+    u8 as FormatFloat,
+    isize as FormatFloat,
+    i128 as FormatFloat,
+    i64 as FormatFloat,
+    i32 as FormatFloat,
+    i16 as FormatFloat,
+    i8 as FormatFloat,
 );
 
-formattable!(f64);
+#[cfg(feature = "float64")]
+formattable!(f32 as f64);
+
+formattable!(FormatFloat);

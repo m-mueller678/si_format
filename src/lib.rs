@@ -23,7 +23,7 @@ use core::fmt::Debug;
 use core::fmt::{self, Display, Formatter};
 use format_impl::FormatImpl;
 
-#[cfg(any(feature = "libm", feature = "std"))]
+#[cfg(feature = "float32")]
 mod float_impl;
 mod format_impl;
 mod formattable;
@@ -106,6 +106,7 @@ mod tests {
     use core::fmt::Display;
     use core::fmt::Write;
     use core::ops::Neg;
+    use crate::float_impl::FormatFloat;
 
     #[test]
     fn test() {
@@ -148,22 +149,24 @@ mod tests {
         t(12345678, -3, 3, "12.3k");
         t(12345678, -4, 3, "1.23k");
         t(12345678, -5, 3, "123");
-        t(12345678, -5, 12, "123.456_780_000");
-        t(12345678, -5, 8, "123.456_78");
-        t(12345678, -5, 9, "123.456_780");
-        t(123456789, -6, 9, "123.456_789");
-        t(
-            121212121212121212121212121f64,
-            0,
-            15,
-            "121.212_121_212_121Y",
-        );
+        #[cfg(feature = "float64")]{
+            t(12345678, -5, 12, "123.456_780_000");
+            t(12345678, -5, 8, "123.456_78");
+            t(12345678, -5, 9, "123.456_780");
+            t(123456789, -6, 9, "123.456_789");
+            t(
+                121212121212121212121212121f64,
+                0,
+                15,
+                "121.212_121_212_121Y",
+            );
+        }
         t(1.3e-4, 0, 1, "130µ");
         t(1.3e-4, 0, 2, "130µ");
         t(1.3e-4, 0, 3, "130µ");
         t(1.3e-4, 0, 4, "130.0µ");
-        t(0.0f64, 0, 4, "0.000");
-        t(f64::INFINITY, 0, 4, "inf");
-        t(f64::NAN, 0, 4, "NaN");
+        t(0.0, 0, 4, "0.000");
+        t(FormatFloat::INFINITY, 0, 4, "inf");
+        t(FormatFloat::NAN, 0, 4, "NaN");
     }
 }
