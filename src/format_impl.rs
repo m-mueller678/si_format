@@ -7,10 +7,11 @@ pub(crate) trait FormatImpl: Copy {
     fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize;
 }
 
-#[cfg(any(feature = "libm",feature = "std"))]
+#[cfg(any(feature = "libm", feature = "std"))]
 impl FormatImpl for f64 {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
         use crate::float_impl::*;
+        use crate::write_buffer::WriteBuffer;
         #[allow(clippy::assertions_on_constants)]
         const _: () = {
             assert!(BUFFER_SIZE >= 30);
@@ -30,13 +31,13 @@ impl FormatImpl for f64 {
         };
         let std_precision = config.significant_digits - 1;
         if self.is_finite() {
-            self *= powi(10f64,config.shift as i32);
+            self *= powi(10f64, config.shift as i32);
             let log1000 = if self == 0.0 {
                 0
             } else {
                 MathImpl::floor(MathImpl::log10(self) / 3.0 - 1e-4) as i32
             };
-            self *= powi(1000f64,-log1000);
+            self *= powi(1000f64, -log1000);
             core::fmt::write(&mut writer, format_args!("{:.*}", std_precision, self)).unwrap();
             //dbg!(String::from_utf8_lossy(writer.buffer));
             let decimal_pos = writer.written - std_precision - 1;
@@ -78,26 +79,5 @@ impl FormatImpl for f64 {
             core::fmt::write(&mut writer, format_args!("{:.*}", std_precision, self)).unwrap();
         }
         writer.written + is_negative as usize
-    }
-}
-
-struct WriteBuffer<'a> {
-    buffer: &'a mut [u8],
-    written: usize,
-}
-
-impl core::fmt::Write for WriteBuffer<'_> {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let s = s.as_bytes();
-        self.buffer[self.written..][..s.len()].copy_from_slice(s);
-        self.written += s.len();
-        Ok(())
-    }
-}
-
-impl WriteBuffer<'_> {
-    fn push_byte(&mut self, b: u8) {
-        self.buffer[self.written] = b;
-        self.written += 1;
     }
 }

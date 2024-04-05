@@ -8,22 +8,25 @@ pub type MathImpl = f64;
 pub type MathImpl = libm::Libm<f64>;
 
 #[allow(clippy::needless_return)]
-pub fn powi(b:f64,e:i32)->f64{
-    #[cfg(feature = "std")]{
+pub fn powi(b: f64, e: i32) -> f64 {
+    #[cfg(feature = "std")]
+    {
         return b.powi(e);
     }
-    #[cfg(feature = "libm")]{
-        return MathImpl::pow(b,e as f64);
+    #[cfg(feature = "libm")]
+    {
+        return MathImpl::pow(b, e as f64);
     }
 }
 
 #[allow(clippy::needless_return)]
-pub fn abs(x:f64)->f64{
-    #[cfg(feature = "std")]{
+pub fn abs(x: f64) -> f64 {
+    #[cfg(feature = "std")]
+    {
         return MathImpl::abs(x);
     }
-    #[cfg(feature = "libm")]{
+    #[cfg(feature = "libm")]
+    {
         return MathImpl::fabs(x);
     }
 }
-

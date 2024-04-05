@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "std"),no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
 
 //! This crate formats numbers using metric prefixes:
@@ -16,15 +16,19 @@
 //! ```
 //! Currently, all formatting is done with floating point arithmetic, though support for float-less formatting is planned.
 
+extern crate alloc;
+
 use crate::format_impl::BUFFER_SIZE;
+use core::fmt::Debug;
 use core::fmt::{self, Display, Formatter};
 use format_impl::FormatImpl;
-use core::fmt::Debug;
 
+#[cfg(any(feature = "libm", feature = "std"))]
+mod float_impl;
 mod format_impl;
 mod formattable;
-#[cfg(any(feature = "libm",feature = "std"))]
-mod float_impl;
+mod write_buffer;
+
 pub use formattable::Formattable;
 
 struct Config {
@@ -98,10 +102,20 @@ impl<T: FormatImpl> Debug for SiFormatted<T> {
 #[cfg(test)]
 mod tests {
     use crate::formattable::Formattable;
+    use crate::write_buffer::WriteBuffer;
+    use core::fmt::Display;
+    use core::fmt::Write;
     use core::ops::Neg;
 
     #[test]
     fn test() {
+        fn to_string(buffer: &mut [u8], x: impl Display) -> &str {
+            let writer = &mut WriteBuffer { buffer, written: 0 };
+            write!(writer, "{}", x).unwrap();
+            let written = writer.written;
+            core::str::from_utf8(&buffer[..written]).unwrap()
+        }
+
         fn t<T: Formattable + Neg<Output = T> + Copy>(
             num: T,
             shift: i8,
@@ -109,19 +123,23 @@ mod tests {
             expected: &str,
         ) {
             assert_eq!(
-                num.si_format()
-                    .with_shift(shift)
-                    .with_precision(significant_digits)
-                    .to_string(),
+                to_string(
+                    &mut [0u8; 300],
+                    num.si_format()
+                        .with_shift(shift)
+                        .with_precision(significant_digits)
+                ),
                 expected
             );
             assert_eq!(
-                (-num)
-                    .si_format()
-                    .with_shift(shift)
-                    .with_precision(significant_digits)
-                    .to_string(),
-                format!("-{}", expected)
+                to_string(
+                    &mut [0u8; 300],
+                    (-num)
+                        .si_format()
+                        .with_shift(shift)
+                        .with_precision(significant_digits)
+                ),
+                to_string(&mut [0u8; 300], format_args!("-{}", expected))
             );
         }
 
