@@ -1,22 +1,29 @@
-use std::fmt::Write;
 use crate::Config;
+use std::fmt::Write;
 
-const BUFFER_SIZE: usize = 32;
+pub const BUFFER_SIZE: usize = 32;
 
-trait FormatImpl {
-    fn format(self, config: Config, out: &mut [u8; BUFFER_SIZE])-> usize ;
+pub(crate) trait FormatImpl: Copy {
+    fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize;
 }
 
 impl FormatImpl for f64 {
-    fn format(mut self, config: Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
-        assert!(self.is_finite() && self>0.0);
+    fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
+        assert!(self.is_finite() && self > 0.0);
         assert!(BUFFER_SIZE >= 30);
         debug_assert!(config.significant_digits <= 18);
         self *= 10f64.powi(config.shift as i32);
         let log1000 = (self.log10() / 3.0 - 1e-4).floor() as i32;
         let normalized = self / 1000f64.powi(log1000);
-        let mut writer = WriteBuffer { buffer: out, written: 0 };
-        core::fmt::write(&mut writer, format_args!("{:.*}", config.significant_digits - 1, normalized)).unwrap();
+        let mut writer = WriteBuffer {
+            buffer: out,
+            written: 0,
+        };
+        core::fmt::write(
+            &mut writer,
+            format_args!("{:.*}", config.significant_digits - 1, normalized),
+        )
+        .unwrap();
         let decimal_pos = writer.written - (config.significant_digits - 1) - 1;
         debug_assert!(writer.buffer[decimal_pos] == b'.');
         if decimal_pos > 3 {
@@ -25,8 +32,8 @@ impl FormatImpl for f64 {
         }
         'format_number: {
             if decimal_pos >= config.significant_digits {
-                writer.written=decimal_pos;
-                break 'format_number
+                writer.written = decimal_pos;
+                break 'format_number;
             }
             let decimal_places = config.significant_digits - decimal_pos - 1;
             for i in (0..decimal_places).rev() {
@@ -36,19 +43,20 @@ impl FormatImpl for f64 {
                 }
             }
             let last_decimal = decimal_places - 1;
-            writer.written = decimal_pos + 1 + last_decimal + last_decimal / 3 + 1; // at most 24
+            writer.written = decimal_pos + 1 + last_decimal + last_decimal / 3 + 1;
+            // at most 24
         };
-        if log1000 < -10 || log1000 > 10{
+        if log1000 < -10 || log1000 > 10 {
             writer.push_byte(b'e');
-            write!(&mut writer,"{log1000}").unwrap();
-        }else{
+            write!(&mut writer, "{log1000}").unwrap();
+        } else {
             if log1000 == -2 {
                 writer.write_str("µ").unwrap();
-            }else if log1000!=0{
-                writer.push_byte(b"qryzafpnum kMGTPEZYRQ"[(log1000+10) as usize]);
+            } else if log1000 != 0 {
+                writer.push_byte(b"qryzafpnum kMGTPEZYRQ"[(log1000 + 10) as usize]);
             }
         }
-        debug_assert!(writer.written<=29);
+        debug_assert!(writer.written <= 29);
         writer.written
     }
 }
@@ -67,9 +75,9 @@ impl core::fmt::Write for WriteBuffer<'_> {
     }
 }
 
-impl WriteBuffer<'_>{
-    fn push_byte(&mut self,b:u8){
-        self.buffer[self.written]=b;
-        self.written+=1;
+impl WriteBuffer<'_> {
+    fn push_byte(&mut self, b: u8) {
+        self.buffer[self.written] = b;
+        self.written += 1;
     }
 }
