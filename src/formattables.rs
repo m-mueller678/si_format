@@ -3,8 +3,8 @@ use crate::*;
 macro_rules! formattable {
     ($t:ty) => {
         impl Formattable for $t {
-            type BackingImpl = $t;
-            fn si_format(self) -> SiFormatted<Self::BackingImpl> {
+            type Formatted = SiFormatted<$t>;
+            fn si_format(self) -> Self::Formatted {
                 SiFormatted {
                     num: self,
                     config: Config::new(),
@@ -15,7 +15,7 @@ macro_rules! formattable {
     ($t:ty,$via:ty) => {
         impl Formattable for $t {
             type Formatted = SiFormatted<$via>;
-            fn si_format(self) -> Self:: {
+            fn si_format(self) -> Self::Formatted {
                 if let Ok(x) = <$via as TryFrom<$t>>::try_from(self){
                     Formattable::si_format(x)
                 }else{

@@ -24,6 +24,7 @@ mod format_impl;
 
 /// A Type that can be formatted with a `SiFormat`.
 pub trait Formattable {
+    #[allow(missing_docs)]
     type Formatted: Display+Debug;
     /// Wraps self for formatting.
     /// The returned object can be further configured before display.
@@ -51,10 +52,6 @@ impl Config {
 pub struct SiFormatted<T: PrimInt> {
     config: Config,
     num: T,
-}
-
-fn aaa(){
-    0f64.fmt().unwrap()
 }
 
 impl<T: PrimInt> SiFormatted<T> {
