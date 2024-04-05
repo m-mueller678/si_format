@@ -2,25 +2,27 @@
 
 //! This crate formats numbers using metric prefixes:
 //! ```
-//! # use si_format::formattable::Formattable;
-//! assert_eq!(123456u32.si_format().with_precision(3).to_string(),"123k")
+//! # use si_format::Formattable;
+//! assert_eq!(123456.si_format().with_precision(3).to_string(),"123k")
 //! ```
 //! You may specify a shift by a certain number of decimal places.
-//! This allows printing fractional quantities without floating point numbers:
+//! This is particularly useful for integers that represent a fixed point fraction:
 //! ```
 //! # use std::time::Duration;
-//! # use si_format::formattable::Formattable;
+//! # use si_format::Formattable;
 //! let d = Duration::from_micros(20);
 //! assert_eq!(format!("{}s",d.as_nanos().si_format().with_shift(-9)),"20.0µs");
 //! ```
+//! Currently, all formatting is done with floating point arithmetic, though support for float-less formatting is planned.
 
-use crate::format_impl::{FormatImpl, BUFFER_SIZE};
+use crate::format_impl::BUFFER_SIZE;
 use core::fmt::{self, Display, Formatter};
-use core::ops::ControlFlow;
 use std::fmt::Debug;
+use format_impl::FormatImpl;
 
 mod format_impl;
 mod formattable;
+pub use formattable::Formattable;
 
 struct Config {
     shift: isize,
@@ -55,11 +57,13 @@ impl<T: FormatImpl> Display for SiFormatted<T> {
 impl<T> SiFormatted<T> {
     /// The number of significant digits to display, must be at least 3.
     /// ```
-    /// use si_format::formattable::Formattable;
+    /// use si_format::Formattable;
     /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
     /// ```
+    /// Up to 15 significant digits are supported.
+    /// This is an artificial restriction, to safeguard users against assuming more precision than an 64 actually has.
+    /// If you have a use case that requires more, please file an issue.
     pub const fn with_precision(mut self, significant_digits: usize) -> Self {
-        assert!(significant_digits >= 3);
         self.config.significant_digits = significant_digits;
         self
     }
@@ -69,7 +73,7 @@ impl<T> SiFormatted<T> {
     /// The input number `x` is formatted as if it were `x*10^shift`.
     /// This allows formatting of fractional quantities using integers:
     /// ```
-    /// use si_format::formattable::Formattable;
+    /// use si_format::Formattable;
     /// assert_eq!(format!("{}s",(22u64).si_format().with_shift(-3)),"22.0ms");
     /// ```
     /// No actual multiplication is performed, the multiplied value need not be representable as `T`.
@@ -79,18 +83,6 @@ impl<T> SiFormatted<T> {
         }
         self
     }
-}
-
-trait Output<Inner> {
-    type Error;
-    fn write_byte(&mut self, i: &mut Inner, b: u8) -> Result<(), Self::Error>;
-    fn write_err(&mut self, i: &mut Inner) -> Result<(), Self::Error>;
-    fn check_exponent(
-        &mut self,
-        i: &mut Inner,
-        e: isize,
-    ) -> Result<ControlFlow<(), ()>, Self::Error>;
-    fn write_exponent(&mut self, i: &mut Inner, e3: isize) -> Result<(), Self::Error>;
 }
 
 impl<T: FormatImpl> Debug for SiFormatted<T> {
@@ -124,5 +116,11 @@ mod tests {
         t(12345678, -5, 8, "123.456_78");
         t(12345678, -5, 9, "123.456_780");
         t(123456789, -6, 9, "123.456_789");
+        t(121212121212121212121212121f64,0,15,"121.212_121_212_121Y");
+        t(1.3e-4,0,1,"130µ");
+        t(1.3e-4,0,2,"130µ");
+        t(1.3e-4,0,3,"130µ");
+        t(1.3e-4,0,4,"130.0µ");
     }
 }
+

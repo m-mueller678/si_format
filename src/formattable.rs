@@ -1,10 +1,13 @@
 use crate::*;
 
-use std::fmt::{Debug, Display};
-
 /// A Type that can be formatted with a `SiFormat`.
 pub trait Formattable {
+    /// To reduce binary size, most types are formatted by casting them to another type and formatting that.
+    /// This is that type.
+    /// Currently, all values are formatted as `f64`, though this may change in the future.
+    /// The concrete backing type used for any type is an implementation detail and you should not rely on it.
     #[allow(missing_docs)]
+    #[allow(private_bounds)]
     type Backing: FormatImpl;
     /// Wraps self for formatting.
     /// The returned object can be further configured before display.
