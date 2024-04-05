@@ -55,13 +55,14 @@ impl<T: FormatImpl> Display for SiFormatted<T> {
 }
 
 impl<T> SiFormatted<T> {
-    /// The number of significant digits to display, must be at least 3.
+    /// The number of significant digits to display.
+    /// Unlike the precision for `std::fmt`, this includes digits before the decimal point.
     /// ```
     /// use si_format::Formattable;
     /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
     /// ```
     /// Up to 15 significant digits are supported.
-    /// This is an artificial restriction, to safeguard users against assuming more precision than an 64 actually has.
+    /// This is an artificial restriction, to safeguard users against assuming more precision than an `f64` actually has.
     /// If you have a use case that requires more, please file an issue.
     pub const fn with_precision(mut self, significant_digits: usize) -> Self {
         self.config.significant_digits = significant_digits;
