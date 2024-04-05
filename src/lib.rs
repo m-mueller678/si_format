@@ -105,19 +105,19 @@ mod tests {
             expected: &str,
         ) {
             assert_eq!(
+                num.si_format()
+                    .with_shift(shift)
+                    .with_precision(significant_digits)
+                    .to_string(),
+                expected
+            );
+            assert_eq!(
                 (-num)
                     .si_format()
                     .with_shift(shift)
                     .with_precision(significant_digits)
                     .to_string(),
                 format!("-{}", expected)
-            );
-            assert_eq!(
-                num.si_format()
-                    .with_shift(shift)
-                    .with_precision(significant_digits)
-                    .to_string(),
-                expected
             );
         }
 
@@ -140,5 +140,6 @@ mod tests {
         t(1.3e-4, 0, 2, "130µ");
         t(1.3e-4, 0, 3, "130µ");
         t(1.3e-4, 0, 4, "130.0µ");
+        t(0.0f64, 0, 4, "0.000");
     }
 }

@@ -24,7 +24,7 @@ impl FormatImpl for f64 {
         };
         assert!(config.significant_digits <= 15);
         self *= 10f64.powi(config.shift as i32);
-        let log1000 = (self.log10() / 3.0 - 1e-4).floor() as i32;
+        let log1000 = if self==0.0{0}else{(self.log10() / 3.0 - 1e-4).floor() as i32};
         let normalized = self / 1000f64.powi(log1000);
         let mut writer = WriteBuffer {
             buffer: out,
@@ -36,8 +36,8 @@ impl FormatImpl for f64 {
             format_args!("{:.*}", std_precision, normalized),
         )
         .unwrap();
+        dbg!(String::from_utf8_lossy(&writer.buffer));
         let decimal_pos = writer.written - std_precision - 1;
-        //dbg!(String::from_utf8_lossy(&writer.buffer));
         if writer.buffer[decimal_pos] == b'.' {
             if decimal_pos > 3 {
                 debug_assert!(decimal_pos == 4);
