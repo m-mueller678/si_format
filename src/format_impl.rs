@@ -9,10 +9,18 @@ pub(crate) trait FormatImpl: Copy {
 
 impl FormatImpl for f64 {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
-        assert!(self.is_finite() && self > 0.0);
+        assert!(self.is_finite());
         #[allow(clippy::assertions_on_constants)]
         const _: () = {
             assert!(BUFFER_SIZE >= 30);
+        };
+        let is_negative = self.is_sign_negative();
+        let out = if is_negative {
+            out[0] = b'-';
+            self = self.abs();
+            &mut out[1..]
+        } else {
+            &mut out[..]
         };
         assert!(config.significant_digits <= 15);
         self *= 10f64.powi(config.shift as i32);
@@ -63,7 +71,7 @@ impl FormatImpl for f64 {
             writer.push_byte(b"qryzafpnum kMGTPEZYRQ"[(log1000 + 10) as usize]);
         }
         debug_assert!(writer.written <= 29);
-        writer.written
+        writer.written + is_negative as usize
     }
 }
 
