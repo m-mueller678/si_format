@@ -1,5 +1,7 @@
 set -e
 
+cargo fmt
+
 FEATURES=(
     ""
     "--no-default-features --features libm --features float32"
