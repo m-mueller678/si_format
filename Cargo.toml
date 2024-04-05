@@ -5,6 +5,12 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["libm"]
+std=[]
+
+
 [dependencies]
 num-traits = "0.2.18"
 derive_builder = "0.20.0"
+libm = { version = "0.2.8",optional = true }

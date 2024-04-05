@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "std"),no_std)]
 #![warn(missing_docs)]
 
 //! This crate formats numbers using metric prefixes:
@@ -8,7 +9,7 @@
 //! You may specify a shift by a certain number of decimal places.
 //! This is particularly useful for integers that represent a fixed point fraction:
 //! ```
-//! # use std::time::Duration;
+//! # use core::time::Duration;
 //! # use si_format::Formattable;
 //! let d = Duration::from_micros(20);
 //! assert_eq!(format!("{}s",d.as_nanos().si_format().with_shift(-9)),"20.0µs");
@@ -18,10 +19,12 @@
 use crate::format_impl::BUFFER_SIZE;
 use core::fmt::{self, Display, Formatter};
 use format_impl::FormatImpl;
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 mod format_impl;
 mod formattable;
+#[cfg(any(feature = "libm",feature = "std"))]
+mod float_impl;
 pub use formattable::Formattable;
 
 struct Config {
@@ -47,10 +50,10 @@ pub struct SiFormatted<T> {
 }
 
 impl<T: FormatImpl> Display for SiFormatted<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let mut buffer = [0u8; BUFFER_SIZE];
         let len = self.num.format_impl(&self.config, &mut buffer);
-        f.write_str(std::str::from_utf8(&buffer[..len]).unwrap())
+        f.write_str(core::str::from_utf8(&buffer[..len]).unwrap())
     }
 }
 
@@ -95,7 +98,7 @@ impl<T: FormatImpl> Debug for SiFormatted<T> {
 #[cfg(test)]
 mod tests {
     use crate::formattable::Formattable;
-    use std::ops::Neg;
+    use core::ops::Neg;
 
     #[test]
     fn test() {
