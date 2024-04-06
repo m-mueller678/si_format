@@ -40,7 +40,7 @@ impl FormatImpl for FormatFloat {
             };
             self *= powi(1000 as FormatFloat, -log1000);
             core::fmt::write(&mut writer, format_args!("{:.*}", std_precision, self)).unwrap();
-            //dbg!(String::from_utf8_lossy(writer.buffer));
+            dbg!(String::from_utf8_lossy(writer.buffer));
             let decimal_pos = writer.written - std_precision - 1;
             if writer.buffer[decimal_pos] == b'.' {
                 if decimal_pos > 3 {
