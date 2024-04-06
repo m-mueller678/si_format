@@ -94,11 +94,30 @@ fn mod_floor3(x: isize) -> isize {
     x - div_floor3(x) * 3
 }
 
-impl FormatImpl for u64 {
-    fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
-        format_unsigned(self, config, out)
-    }
+macro_rules! impl_int {
+    ($($signed:ty, $unsigned:ty,)*) => {
+        $(
+            impl FormatImpl for $unsigned {
+            fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
+                format_unsigned(self, config, out)
+            }
+        }
+
+        impl FormatImpl for $signed {
+            fn format_impl(self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
+                if self<0{
+                    out[0]=b'-';
+                    format_unsigned(self.wrapping_neg() as $unsigned,config,&mut out[1..])+1
+                }else{
+                    format_unsigned(self as $unsigned,config,out)
+                }
+            }
+        }
+        )*
+    };
 }
+
+impl_int!(i32, u32, i64, u64, i128, u128,);
 
 fn format_unsigned<T: Display>(x: T, config: &Config, buffer: &mut [u8]) -> usize {
     let writer = &mut WriteBuffer { buffer, written: 0 };
