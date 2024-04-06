@@ -29,19 +29,20 @@ macro_rules! formattable {
     };
     ($t:ty as $via:ty) => {
         impl Formattable for $t {
-            type Backing = $via;
+            type Backing = <$via as Formattable>::Backing;
             fn si_format(self) -> SiFormatted<Self::Backing> {
                 Formattable::si_format(self as $via)
             }
         }
     };
-     ($($a:ty as $b:ty,)*)=>{
+     ($($a:ty $(as $b:ty)?,)*)=>{
         $(
-            formattable!( $a as $b );
+            formattable!( $a $(as $b)? );
         )*
     };
 }
 
+#[cfg(feature = "int_as_float")]
 formattable!(
     usize as FormatFloat,
     u128 as FormatFloat,
@@ -56,6 +57,19 @@ formattable!(
     i16 as FormatFloat,
     i8 as FormatFloat,
 );
+
+#[cfg(not(feature = "int_as_float"))]
+mod int_impls {
+    use super::*;
+    formattable!(u8 as u32, u16 as u32, i8 as i32, i16 as i32, u64, i64, u128, i128,);
+
+    // this is what std uses to decide how to format
+    #[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
+    formattable!(u32 as u64, i32 as i64,);
+
+    #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
+    formattable!(u32, i32,);
+}
 
 #[cfg(feature = "float64")]
 formattable!(f32 as f64);

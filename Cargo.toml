@@ -6,10 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["std","float64"]
+default = ["std","float64","int_as_float"]
 std=[]
 float32=[]
 float64=["float32"]
+int_as_float=[]
 
 
 [dependencies]
