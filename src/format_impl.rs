@@ -122,6 +122,7 @@ impl_int!(i32, u32, i64, u64, i128, u128,);
 fn format_unsigned<T: Display>(x: T, config: &Config, buffer: &mut [u8]) -> usize {
     let writer = &mut WriteBuffer { buffer, written: 0 };
     write!(writer, "{}", x).unwrap();
+    //dbg!(String::from_utf8_lossy(writer.buffer));
     let mut digits = writer.written;
     while writer.written < config.significant_digits {
         writer.push_byte(b'0');
@@ -150,15 +151,22 @@ fn format_unsigned<T: Display>(x: T, config: &Config, buffer: &mut [u8]) -> usiz
     }
     let log10 = digits as isize - 1 + config.shift;
     let before_decimal = mod_floor3(log10) as usize + 1;
-    for digit in (before_decimal as usize..config.significant_digits).rev() {
-        let new_pos = digit + (digit - before_decimal) / 3 + 1;
-        if digit > before_decimal && digit + (digit - before_decimal) % 3 == 0 {
-            writer.buffer[new_pos - 1] = b'_'
+    //dbg!(String::from_utf8_lossy(writer.buffer), );
+    if before_decimal < config.significant_digits {
+        for digit in (before_decimal..config.significant_digits).rev() {
+            let new_pos = digit + (digit - before_decimal) / 3 + 1;
+            if digit > before_decimal && (digit - before_decimal) % 3 == 0 {
+                writer.buffer[new_pos - 1] = b'_'
+            }
+            writer.buffer[new_pos] = writer.buffer[digit];
         }
-        writer.buffer[new_pos] = writer.buffer[digit];
+        writer.buffer[before_decimal] = b'.';
+        //dbg!(String::from_utf8_lossy(writer.buffer));
+        let last_digit = config.significant_digits - 1;
+        writer.written = last_digit + (last_digit - before_decimal) / 3 + 1 + 1;
+    } else {
+        writer.written = before_decimal;
     }
-    let last_digit = config.significant_digits - 1;
-    writer.written = last_digit + (last_digit - before_decimal) / 3 + 1;
     write_prefix(writer, div_floor3(log10) as i32);
     writer.written
 }
