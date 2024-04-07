@@ -17,6 +17,7 @@
 //! Currently, all formatting is done with floating point arithmetic, though support for float-less formatting is planned.
 
 extern crate alloc;
+extern crate core;
 
 use crate::format_impl::BUFFER_SIZE;
 use core::fmt::Debug;
@@ -31,6 +32,7 @@ mod write_buffer;
 
 pub use formattable::Formattable;
 
+#[derive(Debug)]
 struct Config {
     shift: isize,
     significant_digits: usize,
@@ -68,10 +70,9 @@ impl<T> SiFormatted<T> {
     /// use si_format::Formattable;
     /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
     /// ```
-    /// Up to 15 significant digits are supported.
-    /// This is an artificial restriction, to safeguard users against assuming more precision than an `f64` actually has.
-    /// If you have a use case that requires more, please file an issue.
-    pub const fn with_precision(mut self, significant_digits: usize) -> Self {
+    /// This should be in the range `3..=12`.
+    pub fn with_precision(mut self, significant_digits: usize) -> Self {
+        assert!((3..=12).contains(&significant_digits));
         self.config.significant_digits = significant_digits;
         self
     }
@@ -85,7 +86,7 @@ impl<T> SiFormatted<T> {
     /// assert_eq!(format!("{}s",(22u64).si_format().with_shift(-3)),"22.0ms");
     /// ```
     /// No actual multiplication is performed, the multiplied value need not be representable as `T`.
-    pub const fn with_shift(mut self, shift: i8) -> Self {
+    pub fn with_shift(mut self, shift: i8) -> Self {
         if self.config.shift != isize::MAX {
             self.config.shift = shift as isize;
         }
@@ -155,22 +156,10 @@ mod tests {
             t(12345678, -5, 8, "123.456_78");
             t(12345678, -5, 9, "123.456_780");
             t(123456789, -6, 9, "123.456_789");
-            t(
-                121212121212121212121212121i128,
-                0,
-                15,
-                "121.212_121_212_121Y",
-            );
+            t(121212121212121212121212121i128, 0, 12, "121.212_121_212Y");
         }
         #[cfg(feature = "float64")]
-        t(
-            121212121212121212121212121f64,
-            0,
-            15,
-            "121.212_121_212_121Y",
-        );
-        t(1.3e-4, 0, 1, "130µ");
-        t(1.3e-4, 0, 2, "130µ");
+        t(121212121212121212121212121f64, 0, 12, "121.212_121_212Y");
         t(1.3e-4, 0, 3, "130µ");
         t(1.3e-4, 0, 4, "130.0µ");
         t(9999, 0, 3, "10.0k");

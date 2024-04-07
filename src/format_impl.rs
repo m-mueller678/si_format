@@ -1,7 +1,7 @@
 use crate::float_impl::FormatFloat;
 use crate::write_buffer::WriteBuffer;
 use crate::Config;
-use core::fmt::{Display, Write};
+use core::fmt::{Debug, Display, Write};
 
 pub const BUFFER_SIZE: usize = 40;
 
@@ -26,53 +26,43 @@ impl FormatImpl for FormatFloat {
         } else {
             &mut out[..]
         };
-        let mut writer = WriteBuffer {
-            buffer: out,
-            written: 0,
-        };
-        let std_precision = config.significant_digits - 1;
         if self.is_finite() {
-            self *= powi(10 as FormatFloat, config.shift as i32);
-            let log1000 = if self == 0.0 {
-                0
-            } else {
-                MathImpl::floor(MathImpl::log10(self) / 3.0 - 1e-4) as i32
-            };
-            self *= powi(1000 as FormatFloat, -log1000);
-            core::fmt::write(&mut writer, format_args!("{:.*}", std_precision, self)).unwrap();
-            dbg!(String::from_utf8_lossy(writer.buffer));
-            let decimal_pos = writer.written - std_precision - 1;
-            if writer.buffer[decimal_pos] == b'.' {
-                if decimal_pos > 3 {
-                    debug_assert!(decimal_pos == 4);
-                    writer.buffer[1..][..4].rotate_right(1);
+            let mut config = Config { ..*config };
+            if self != 0.0 {
+                let log10 = MathImpl::floor(MathImpl::log10(self)) as i32;
+                let target_log10 = config.significant_digits - 1;
+                dbg!(target_log10, log10);
+                let float_shift = target_log10 as i32 - log10;
+                self *= powi(10.0 as FormatFloat, float_shift);
+                config.shift -= float_shift as isize;
+                dbg!(float_shift);
+                if cfg!(test) {
+                    let mut buffer = [0u8; 100];
+                    let writer = &mut WriteBuffer {
+                        buffer: &mut buffer,
+                        written: 0,
+                    };
+                    write!(writer, "{}", MathImpl::round(self) as u64).unwrap();
+                    dbg!(String::from_utf8_lossy(&writer.buffer[..writer.written]));
+                    assert_eq!(writer.written, config.significant_digits);
                 }
-                'format_number: {
-                    if decimal_pos >= config.significant_digits {
-                        writer.written = decimal_pos;
-                        break 'format_number;
-                    }
-                    let decimal_places = config.significant_digits - decimal_pos;
-                    for i in (0..decimal_places).rev() {
-                        writer.buffer[decimal_pos + 1 + i + i / 3] =
-                            writer.buffer[decimal_pos + 1 + i];
-                        if i % 3 == 2 {
-                            writer.buffer[decimal_pos + 1 + i + i / 3 + 1] = b'_';
-                        }
-                    }
-                    let last_decimal = decimal_places - 1;
-                    writer.written = decimal_pos + 1 + last_decimal + last_decimal / 3 + 1;
-                    // at most 25
-                };
-            } else {
-                debug_assert!(!writer.buffer[..writer.written].iter().any(|x| *x == b'.'));
             }
-            write_prefix(&mut writer, log1000);
-            debug_assert!(writer.written <= 29);
+            format_unsigned(MathImpl::round(self) as u64, &config, out) + is_negative as usize
         } else {
-            core::fmt::write(&mut writer, format_args!("{:.*}", std_precision, self)).unwrap();
+            let mut writer = WriteBuffer {
+                buffer: out,
+                written: 0,
+            };
+            writer
+                .write_str(if self.is_nan() {
+                    "NaN"
+                } else {
+                    debug_assert!(self.is_infinite());
+                    "inf"
+                })
+                .unwrap();
+            writer.written + is_negative as usize
         }
-        writer.written + is_negative as usize
     }
 }
 
@@ -119,7 +109,8 @@ macro_rules! impl_int {
 
 impl_int!(i32, u32, i64, u64, i128, u128,);
 
-fn format_unsigned<T: Display>(x: T, config: &Config, buffer: &mut [u8]) -> usize {
+fn format_unsigned<T: Display + Debug>(x: T, config: &Config, buffer: &mut [u8]) -> usize {
+    dbg!(&x, config);
     let writer = &mut WriteBuffer { buffer, written: 0 };
     write!(writer, "{}", x).unwrap();
     //dbg!(String::from_utf8_lossy(writer.buffer));

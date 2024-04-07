@@ -12,7 +12,7 @@ float32=[]
 float64=["float32"]
 int_as_float=[]
 
-
 [dependencies]
 num-traits = "0.2.18"
 libm = { version = "0.2.8",optional = true }
+bounded-integer= { version="0.5.7",features=["types"] }
