@@ -72,8 +72,7 @@ impl<T> SiFormatted<T> {
     /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
     /// ```
     /// This should be in the range `3..=12`.
-    fn with_precision(mut self, significant_digits: usize) -> Self {
-        assert!((3..=12).contains(&significant_digits));
+    pub fn with_precision(mut self, significant_digits: usize) -> Self {
         self.config.significant_digits = significant_digits;
         self
     }

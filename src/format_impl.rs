@@ -12,7 +12,7 @@ pub(crate) trait FormatImpl: Copy {
 #[cfg(feature = "float32")]
 impl FormatImpl for FormatFloat {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
-        dbg!(self, config);
+        //dbg!(self, config);
         use crate::float_impl::*;
         #[allow(clippy::assertions_on_constants)]
         const _: () = {
@@ -36,30 +36,31 @@ impl FormatImpl for FormatFloat {
             if self != 0.0 {
                 let log10 = MathImpl::floor(MathImpl::log10(self)) as i32;
                 let target_log10 = config.significant_digits - 1;
-                dbg!(target_log10, log10);
+                //dbg!(target_log10, log10);
                 let float_shift = target_log10 as i32 - log10;
                 self *= powi(10.0 as FormatFloat, float_shift);
                 config.shift -= float_shift as isize;
-                dbg!(float_shift);
+                //dbg!(float_shift);
             }
             write!(writer, "{}", MathImpl::round(self) as u64).unwrap();
-            dbg!(String::from_utf8_lossy(&writer.buffer[..writer.written]));
-            if cfg!(test) && writer.written != config.significant_digits {
+            //dbg!(String::from_utf8_lossy(&writer.buffer[..writer.written]));
+            if cfg!(test) && self != 0.0 && writer.written != config.significant_digits {
                 assert_eq!(writer.written, config.significant_digits + 1);
                 assert!(
                     writer.buffer[0] == b'1'
                         && writer.buffer[1..writer.written].iter().all(|x| *x == b'0')
                 );
             }
+            let mut log10 = writer.written as isize + config.shift - 1;
+            while writer.written < config.significant_digits {
+                debug_assert!(self == 0.0);
+                log10 = 0;
+                writer.push_byte(b'0');
+            }
             if writer.written != config.significant_digits {
                 writer.written = config.significant_digits;
-                config.shift += 1;
             }
-            post_format_uint(
-                writer,
-                writer.written as isize + config.shift - 1,
-                config.significant_digits,
-            );
+            post_format_uint(writer, log10, config.significant_digits);
             writer.written + is_negative as usize
         } else {
             writer
@@ -119,7 +120,7 @@ macro_rules! impl_int {
 impl_int!(i32, u32, i64, u64, i128, u128,);
 
 fn format_unsigned<T: Display + Debug>(x: T, config: &Config, buffer: &mut [u8]) -> usize {
-    dbg!(&x, config);
+    //dbg!(&x, config);
     let writer = &mut WriteBuffer { buffer, written: 0 };
     write!(writer, "{}", x).unwrap();
     //dbg!(String::from_utf8_lossy(writer.buffer));
@@ -156,12 +157,7 @@ fn format_unsigned<T: Display + Debug>(x: T, config: &Config, buffer: &mut [u8])
 
 fn post_format_uint(writer: &mut WriteBuffer, log10: isize, significant_digits: usize) {
     let before_decimal = mod_floor3(log10) as usize + 1;
-    dbg!(
-        String::from_utf8_lossy(&writer.buffer[..writer.written]),
-        log10,
-        significant_digits,
-        before_decimal
-    );
+    // dbg!(String::from_utf8_lossy(&writer.buffer[..writer.written]),log10,significant_digits,before_decimal);
     if before_decimal < significant_digits {
         for digit in (before_decimal..significant_digits).rev() {
             let new_pos = digit + (digit - before_decimal) / 3 + 1;
