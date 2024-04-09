@@ -4,7 +4,7 @@
 //! This crate formats numbers using metric prefixes:
 //! ```
 //! # use si_format::Formattable;
-//! assert_eq!(123456.si_format().with_precision(3).to_string(),"123k")
+//! assert_eq!(123456.si_format().to_string(),"123k")
 //! ```
 //! You may specify a shift by a certain number of decimal places.
 //! This is particularly useful for integers that represent a fixed point fraction:
@@ -14,7 +14,8 @@
 //! let d = Duration::from_micros(20);
 //! assert_eq!(format!("{}s",d.as_nanos().si_format().with_shift(-9)),"20.0µs");
 //! ```
-//! Currently, all formatting is done with floating point arithmetic, though support for float-less formatting is planned.
+//! # Rounding
+//! Currently, the method used for rounding is unspecified. `0.5` may be rounded either up or down.
 
 extern crate alloc;
 extern crate core;
@@ -71,7 +72,7 @@ impl<T> SiFormatted<T> {
     /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
     /// ```
     /// This should be in the range `3..=12`.
-    pub fn with_precision(mut self, significant_digits: usize) -> Self {
+    fn with_precision(mut self, significant_digits: usize) -> Self {
         assert!((3..=12).contains(&significant_digits));
         self.config.significant_digits = significant_digits;
         self

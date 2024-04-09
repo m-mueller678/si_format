@@ -12,6 +12,7 @@ pub(crate) trait FormatImpl: Copy {
 #[cfg(feature = "float32")]
 impl FormatImpl for FormatFloat {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
+        dbg!(self, config);
         use crate::float_impl::*;
         #[allow(clippy::assertions_on_constants)]
         const _: () = {
@@ -26,6 +27,10 @@ impl FormatImpl for FormatFloat {
         } else {
             &mut out[..]
         };
+        let writer = &mut WriteBuffer {
+            buffer: out,
+            written: 0,
+        };
         if self.is_finite() {
             let mut config = Config { ..*config };
             if self != 0.0 {
@@ -36,23 +41,27 @@ impl FormatImpl for FormatFloat {
                 self *= powi(10.0 as FormatFloat, float_shift);
                 config.shift -= float_shift as isize;
                 dbg!(float_shift);
-                if cfg!(test) {
-                    let mut buffer = [0u8; 100];
-                    let writer = &mut WriteBuffer {
-                        buffer: &mut buffer,
-                        written: 0,
-                    };
-                    write!(writer, "{}", MathImpl::round(self) as u64).unwrap();
-                    dbg!(String::from_utf8_lossy(&writer.buffer[..writer.written]));
-                    assert_eq!(writer.written, config.significant_digits);
-                }
             }
-            format_unsigned(MathImpl::round(self) as u64, &config, out) + is_negative as usize
+            write!(writer, "{}", MathImpl::round(self) as u64).unwrap();
+            dbg!(String::from_utf8_lossy(&writer.buffer[..writer.written]));
+            if cfg!(test) && writer.written != config.significant_digits {
+                assert_eq!(writer.written, config.significant_digits + 1);
+                assert!(
+                    writer.buffer[0] == b'1'
+                        && writer.buffer[1..writer.written].iter().all(|x| *x == b'0')
+                );
+            }
+            if writer.written != config.significant_digits {
+                writer.written = config.significant_digits;
+                config.shift += 1;
+            }
+            post_format_uint(
+                writer,
+                writer.written as isize + config.shift - 1,
+                config.significant_digits,
+            );
+            writer.written + is_negative as usize
         } else {
-            let mut writer = WriteBuffer {
-                buffer: out,
-                written: 0,
-            };
             writer
                 .write_str(if self.is_nan() {
                     "NaN"
@@ -141,10 +150,20 @@ fn format_unsigned<T: Display + Debug>(x: T, config: &Config, buffer: &mut [u8])
         }
     }
     let log10 = digits as isize - 1 + config.shift;
+    post_format_uint(writer, log10, config.significant_digits);
+    writer.written
+}
+
+fn post_format_uint(writer: &mut WriteBuffer, log10: isize, significant_digits: usize) {
     let before_decimal = mod_floor3(log10) as usize + 1;
-    //dbg!(String::from_utf8_lossy(writer.buffer), );
-    if before_decimal < config.significant_digits {
-        for digit in (before_decimal..config.significant_digits).rev() {
+    dbg!(
+        String::from_utf8_lossy(&writer.buffer[..writer.written]),
+        log10,
+        significant_digits,
+        before_decimal
+    );
+    if before_decimal < significant_digits {
+        for digit in (before_decimal..significant_digits).rev() {
             let new_pos = digit + (digit - before_decimal) / 3 + 1;
             if digit > before_decimal && (digit - before_decimal) % 3 == 0 {
                 writer.buffer[new_pos - 1] = b'_'
@@ -153,11 +172,10 @@ fn format_unsigned<T: Display + Debug>(x: T, config: &Config, buffer: &mut [u8])
         }
         writer.buffer[before_decimal] = b'.';
         //dbg!(String::from_utf8_lossy(writer.buffer));
-        let last_digit = config.significant_digits - 1;
+        let last_digit = significant_digits - 1;
         writer.written = last_digit + (last_digit - before_decimal) / 3 + 1 + 1;
     } else {
         writer.written = before_decimal;
     }
     write_prefix(writer, div_floor3(log10) as i32);
-    writer.written
 }
