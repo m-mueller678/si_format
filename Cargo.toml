@@ -9,6 +9,9 @@ readme = "readme.md"
 keywords = ["format","human","number","pretty","si-units"]
 categories = ["value-formatting","embedded","no-std::no-alloc","development-tools"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+exclude = [
+    "check.sh",
+]
 
 [features]
 default = ["std","float64"]
