@@ -4,10 +4,10 @@ cargo fmt
 
 FEATURES=(
     ""
-    "--no-default-features --features libm --features float32 --features int_as_float"
+    "--no-default-features --features libm --features float32"
     "--no-default-features --features std --features float32"
     "--no-default-features --features libm --features float64"
-    "--no-default-features --features std --features float64 --features int_as_float"
+    "--no-default-features --features std --features float64"
 )
 
 for feature in "${FEATURES[@]}"; do
