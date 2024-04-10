@@ -6,6 +6,8 @@ license = "MIT OR Apache-2.0"
 description = "format numbers using metric prefixes"
 repository = "https://github.com/m-mueller678/si_format"
 readme = "readme.md"
+keywords = ["format","human","number","pretty","si-units"]
+categories = ["value-formatting","embedded","no-std::no-alloc","development-tools"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
