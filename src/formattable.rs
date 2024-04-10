@@ -42,34 +42,14 @@ macro_rules! formattable {
     };
 }
 
-#[cfg(feature = "int_as_float")]
-formattable!(
-    usize as FormatFloat,
-    u128 as FormatFloat,
-    u64 as FormatFloat,
-    u32 as FormatFloat,
-    u16 as FormatFloat,
-    u8 as FormatFloat,
-    isize as FormatFloat,
-    i128 as FormatFloat,
-    i64 as FormatFloat,
-    i32 as FormatFloat,
-    i16 as FormatFloat,
-    i8 as FormatFloat,
-);
+formattable!(u8 as u32, u16 as u32, i8 as i32, i16 as i32, u64, i64, u128, i128,);
 
-#[cfg(not(feature = "int_as_float"))]
-mod int_impls {
-    use super::*;
-    formattable!(u8 as u32, u16 as u32, i8 as i32, i16 as i32, u64, i64, u128, i128,);
+// this is what std uses to decide how to format
+#[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
+formattable!(u32 as u64, i32 as i64,);
 
-    // this is what std uses to decide how to format
-    #[cfg(any(target_pointer_width = "64", target_arch = "wasm32"))]
-    formattable!(u32 as u64, i32 as i64,);
-
-    #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
-    formattable!(u32, i32,);
-}
+#[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32")))]
+formattable!(u32, i32,);
 
 #[cfg(feature = "float64")]
 formattable!(f32 as f64);
