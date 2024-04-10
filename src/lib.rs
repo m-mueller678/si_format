@@ -178,6 +178,8 @@ mod tests {
         t(999999, 0, 5, "1.000_0M");
         t(0.0, 0, 4, "0.000");
         t(FormatFloat::INFINITY, 0, 4, "inf");
+        t(FormatFloat::INFINITY, -8, 4, "inf");
         t(FormatFloat::NAN, 0, 4, "NaN");
+        t(FormatFloat::NAN, 2, 4, "NaN");
     }
 }
