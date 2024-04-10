@@ -32,14 +32,14 @@ impl FormatImpl for FormatFloat {
             written: 0,
         };
         if self.is_finite() {
-            let mut config = Config { ..*config };
+            let mut shift = config.shift;
             if self != 0.0 {
                 let log10 = MathImpl::floor(MathImpl::log10(self)) as i32;
                 let target_log10 = config.significant_digits - 1;
                 //dbg!(target_log10, log10);
                 let float_shift = target_log10 as i32 - log10;
                 self *= powi(10.0 as FormatFloat, float_shift);
-                config.shift -= float_shift as isize;
+                shift -= float_shift as isize;
                 //dbg!(float_shift);
             }
             write!(writer, "{}", MathImpl::round(self) as u64).unwrap();
@@ -51,7 +51,7 @@ impl FormatImpl for FormatFloat {
                         && writer.buffer[1..writer.written].iter().all(|x| *x == b'0')
                 );
             }
-            let mut log10 = writer.written as isize + config.shift - 1;
+            let mut log10 = writer.written as isize + shift - 1;
             while writer.written < config.significant_digits {
                 debug_assert!(self == 0.0);
                 log10 = 0;
