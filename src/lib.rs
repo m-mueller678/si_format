@@ -69,10 +69,12 @@ impl<T> SiFormatted<T> {
     /// Unlike the precision for `std::fmt`, this includes digits before the decimal point.
     /// ```
     /// use si_format::Formattable;
-    /// assert_eq!(1234.si_format().with_precision(2).to_string(),"1.2k");
+    /// assert_eq!(1234567.si_format().with_precision(5).to_string(),"1.234_6M");
     /// ```
-    /// This should be in the range `3..=12`.
+    /// Currently, this must be at least 3.
+    // At lower precision we might get rounding before the decimal separator: 123 -> 120.
     pub fn with_precision(mut self, significant_digits: usize) -> Self {
+        assert!(significant_digits >= 3);
         self.config.significant_digits = significant_digits;
         self
     }
