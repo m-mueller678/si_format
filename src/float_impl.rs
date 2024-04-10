@@ -1,4 +1,4 @@
-#[cfg(all(feature = "std", feature = "libm"))]
+#[cfg(all(feature = "std", feature = "libm",not(docsrs)))]
 compile_error!("feature \"std\" and feature \"libm\" cannot be enabled at the same time");
 
 #[cfg(not(feature = "libm"))]
