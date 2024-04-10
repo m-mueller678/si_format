@@ -1,4 +1,3 @@
-use crate::float_impl::FormatFloat;
 use crate::write_buffer::WriteBuffer;
 use crate::Config;
 use core::fmt::{Debug, Display, Write};
@@ -10,7 +9,7 @@ pub(crate) trait FormatImpl: Copy {
 }
 
 #[cfg(feature = "float32")]
-impl FormatImpl for FormatFloat {
+impl FormatImpl for crate::float_impl::FormatFloat {
     fn format_impl(mut self, config: &Config, out: &mut [u8; BUFFER_SIZE]) -> usize {
         //dbg!(self, config);
         use crate::float_impl::*;
@@ -38,7 +37,7 @@ impl FormatImpl for FormatFloat {
                 let target_log10 = config.significant_digits - 1;
                 //dbg!(target_log10, log10);
                 let float_shift = target_log10 as i32 - log10;
-                self *= powi(10.0 as FormatFloat, float_shift);
+                self *= powi(10.0 as Self, float_shift);
                 shift -= float_shift as isize;
                 //dbg!(float_shift);
             }

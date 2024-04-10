@@ -1,4 +1,3 @@
-use crate::float_impl::FormatFloat;
 use crate::*;
 
 /// A Type that can be formatted with a `SiFormat`.
@@ -54,4 +53,5 @@ formattable!(u32, i32,);
 #[cfg(feature = "float64")]
 formattable!(f32 as f64);
 
-formattable!(FormatFloat);
+#[cfg(feature = "float32")]
+formattable!(float_impl::FormatFloat);

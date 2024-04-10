@@ -4,6 +4,7 @@ cargo fmt
 
 FEATURES=(
     ""
+    "--no-default-features"
     "--no-default-features --features libm --features float32"
     "--no-default-features --features std --features float32"
     "--no-default-features --features libm --features float64"

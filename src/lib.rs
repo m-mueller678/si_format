@@ -113,6 +113,7 @@ impl<T: FormatImpl> Debug for SiFormatted<T> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "float32")]
     use crate::float_impl::FormatFloat;
     use crate::formattable::Formattable;
     use crate::write_buffer::WriteBuffer;
@@ -171,15 +172,18 @@ mod tests {
         }
         #[cfg(feature = "float64")]
         t(121212121212121212121212121f64, 0, 12, "121.212_121_212Y");
-        t(1.3e-4, 0, 3, "130µ");
-        t(1.3e-4, 0, 4, "130.0µ");
         t(9999, 0, 3, "10.0k");
         t(99999, 0, 4, "100.0k");
         t(999999, 0, 5, "1.000_0M");
-        t(0.0, 0, 4, "0.000");
-        t(FormatFloat::INFINITY, 0, 4, "inf");
-        t(FormatFloat::INFINITY, -8, 4, "inf");
-        t(FormatFloat::NAN, 0, 4, "NaN");
-        t(FormatFloat::NAN, 2, 4, "NaN");
+        #[cfg(feature = "float32")]
+        {
+            t(1.3e-4, 0, 3, "130µ");
+            t(1.3e-4, 0, 4, "130.0µ");
+            t(0.0, 0, 4, "0.000");
+            t(FormatFloat::INFINITY, 0, 4, "inf");
+            t(FormatFloat::INFINITY, -8, 4, "inf");
+            t(FormatFloat::NAN, 0, 4, "NaN");
+            t(FormatFloat::NAN, 2, 4, "NaN");
+        }
     }
 }
